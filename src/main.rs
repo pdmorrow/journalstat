@@ -5,6 +5,7 @@
 /// License: MIT
 use std::{
     collections::HashMap,
+    hash::Hash,
     path::{Path, PathBuf},
 };
 use structopt::StructOpt;
@@ -57,6 +58,10 @@ struct JournalStat {
     top_talkers: Vec<(u32, Message)>,
     // The largest messages in the journal.
     largest: Vec<String>,
+    // Per process % of messages.
+    per_process: HashMap<String, u32>,
+    // Total number of messages parsed.
+    total_msgs: u64,
 }
 
 #[derive(Tabled)]
@@ -67,6 +72,14 @@ struct TopTalkerTableEntry<'a> {
     Process: &'a str,
     Priority: String,
     Message: &'a str,
+}
+
+#[derive(Tabled)]
+#[allow(non_snake_case)]
+struct PerProcessTableEntry<'a> {
+    Rank: usize,
+    Process: &'a str,
+    Percent: String,
 }
 
 #[derive(Tabled)]
@@ -94,6 +107,8 @@ impl JournalStat {
             msg_freq: HashMap::new(),
             top_talkers: Vec::with_capacity(10),
             largest: Vec::with_capacity(10),
+            per_process: HashMap::new(),
+            total_msgs: 0,
         })
     }
 
@@ -131,6 +146,8 @@ impl JournalStat {
                     }
                 }
 
+                self.total_msgs += 1;
+
                 let key = Message {
                     msg: msg.clone(),
                     process: process_name.clone(),
@@ -141,6 +158,12 @@ impl JournalStat {
                 let count = *self
                     .msg_freq
                     .entry(key.clone())
+                    .and_modify(|c| *c += 1)
+                    .or_insert(1);
+
+                // Update per process stats.
+                self.per_process
+                    .entry(process_name.to_string())
                     .and_modify(|c| *c += 1)
                     .or_insert(1);
 
@@ -193,6 +216,26 @@ impl JournalStat {
     /// Generate a report.
     pub fn report(&self) {
         println!("Journal statistics for {}", self.input.display());
+
+        if !self.per_process.is_empty() {
+            println!("Per process message allocations");
+
+            let mut pp_vec: Vec<(String, u32)> =
+                self.per_process.clone().into_iter().map(|e| e).collect();
+            pp_vec.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+
+            let mut table = Vec::new();
+
+            for (i, (process, nmsgs)) in pp_vec.iter().enumerate() {
+                table.push(PerProcessTableEntry {
+                    Rank: i + 1,
+                    Process: process,
+                    Percent: format!("{:.02}", ((*nmsgs as f32 / self.total_msgs as f32) * 100.0)),
+                });
+            }
+
+            println!("{}", Table::new(table));
+        }
 
         if !self.top_talkers.is_empty() {
             println!("Top {} most frequent messages:", self.top_talkers.len());
