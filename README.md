@@ -7,13 +7,35 @@ statistics:
   * Most frequently occurring messages.
   * Largest messages.
 
+Filter by:
+
+  * Systemd unit.
+
 ## Build
 
 cargo build --release
 
 ## Run
 
-```./target/debug/journalstat --help```
+```
+peter@p15v:~/git/journalstat$ ./target/release/journalstat --help
+args 0.1.0
+Arguments to the tool
+
+USAGE:
+    journalstat [OPTIONS] --input <input>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+    -i, --input <input>                      Input journal file or directory
+    -l, --large-messages <large-messages>    The number of large messages to report on
+    -t, --top-talkers <top-talkers>          The number of top talkers to report on
+    -u, --unit <unit>                        Filter on a specific unit
+peter@p15v:~/git/journalstat$ 
+```
 
 ### Examples
 
