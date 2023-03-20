@@ -40,6 +40,8 @@ struct Message {
     msg: String,
     /// The process that generated the message.
     process: String,
+    /// Priority the message was sent at.
+    priority: String,
 }
 
 struct JournalStat {
@@ -63,6 +65,7 @@ struct TopTalkerTableEntry<'a> {
     Rank: usize,
     Frequency: u32,
     Process: &'a str,
+    Priority: String,
     Message: &'a str,
 }
 
@@ -115,7 +118,11 @@ impl JournalStat {
     /// Read the journal and record any statistics.
     pub fn parse(&mut self) -> &mut Self {
         while let Ok(Some(entry)) = self.journal.next_entry() {
-            if let (Some(msg), Some(process_name)) = (entry.get("MESSAGE"), entry.get("_COMM")) {
+            if let (Some(msg), Some(process_name), Some(priority)) = (
+                entry.get("MESSAGE"),
+                entry.get("_COMM"),
+                entry.get("PRIORITY"),
+            ) {
                 if let Some(unit) = &self.unit {
                     if let Some(junit) = entry.get("_SYSTEMD_UNIT") {
                         if !unit.eq(junit) {
@@ -127,6 +134,7 @@ impl JournalStat {
                 let key = Message {
                     msg: msg.clone(),
                     process: process_name.clone(),
+                    priority: priority.clone(),
                 };
 
                 // No way around the to_string() which will hurt performance.
@@ -166,6 +174,22 @@ impl JournalStat {
         self
     }
 
+    /// Turn a number string priority into a syslog priority name.
+    fn pretty_priorty(&self, prio: &str) -> String {
+        match prio {
+            "0" => "emergency",
+            "1" => "alert",
+            "2" => "critical",
+            "3" => "error",
+            "4" => "warn",
+            "5" => "notice",
+            "6" => "info",
+            "7" => "debug",
+            _ => "unknown",
+        }
+        .to_string()
+    }
+
     /// Generate a report.
     pub fn report(&self) {
         println!("Journal statistics for {}", self.input.display());
@@ -180,6 +204,7 @@ impl JournalStat {
                     Rank: i + 1,
                     Frequency: *count,
                     Process: &msg.process,
+                    Priority: self.pretty_priorty(&msg.priority),
                     Message: &msg.msg,
                 });
             }
