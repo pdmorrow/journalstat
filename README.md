@@ -1,8 +1,10 @@
 # Journalstat.
 
+Performance is not a goal!
+
 Take as input a systemd journal file in binary format, or a directory containing
-many journal files and produces tablular statistics on the journal contents. Supported
-statistics:
+many journal files and produces tablular statistics on the journal contents.
+Supported statistics:
 
   * Most frequently occurring messages.
   * Largest messages.
@@ -10,6 +12,7 @@ statistics:
 Filter by:
 
   * Systemd unit.
+  * Regex.
 
 ## Build
 
@@ -19,8 +22,8 @@ cargo build --release
 
 ```
 peter@p15v:~/git/journalstat$ ./target/release/journalstat --help
-args 0.1.0
-Arguments to the tool
+Journalstat 0.1.0
+Command line options
 
 USAGE:
     journalstat [OPTIONS] --input <input>
@@ -32,9 +35,10 @@ FLAGS:
 OPTIONS:
     -i, --input <input>                      Input journal file or directory
     -l, --large-messages <large-messages>    The number of large messages to report on
+    -p, --pattern <pattern>                  Filter messages based on this regex pattern
     -t, --top-talkers <top-talkers>          The number of top talkers to report on
     -u, --unit <unit>                        Filter on a specific unit
-peter@p15v:~/git/journalstat$ 
+peter@p15v:~/git/journalstat$
 ```
 
 ### Examples
