@@ -9,6 +9,7 @@ edition = "2021"
 systemd = "0.10.0"
 structopt = "0.3.26"
 tabled = "0.10.0"
+regex = "1.8.1"
 
 [profile.release]
 lto = true

@@ -1,3 +1,4 @@
+use regex::Regex;
 /// Crude tool to parse systemd journal files in binary
 /// format in order to derive some statistics out of the
 /// messages.
@@ -33,6 +34,10 @@ struct Opt {
     /// Filter on a specific unit.
     #[structopt(short, long)]
     unit: Option<String>,
+
+    /// Filter messages based on this regex pattern.
+    #[structopt(short, long)]
+    pattern: Option<String>,
 }
 
 #[derive(Eq, PartialEq, Hash, Clone)]
@@ -62,6 +67,8 @@ struct JournalStat {
     per_process: HashMap<String, u32>,
     // Total number of messages parsed.
     total_msgs: u64,
+    // Regex to match on.
+    regex: Option<Regex>,
 }
 
 #[derive(Tabled)]
@@ -109,10 +116,17 @@ impl JournalStat {
             largest: Vec::with_capacity(10),
             per_process: HashMap::new(),
             total_msgs: 0,
+            regex: None,
         })
     }
 
-    /// Filter on a particular systemd unit.s
+    /// Set the regex to filter on.
+    pub fn set_regex(&mut self, regex: &Option<Regex>) -> &mut Self {
+        self.regex = regex.clone();
+        self
+    }
+
+    /// Filter on a particular systemd unit.
     pub fn set_filter_unit(&mut self, unit: &Option<String>) -> &mut Self {
         self.unit = unit.clone();
         self
@@ -143,6 +157,12 @@ impl JournalStat {
                         if !unit.eq(junit) {
                             continue;
                         }
+                    }
+                }
+
+                if let Some(regex) = &self.regex {
+                    if regex.find(&msg).is_none() {
+                        continue;
                     }
                 }
 
@@ -281,6 +301,10 @@ fn main() {
         .n_frequent(opt.top_talkers.unwrap_or(0))
         .n_largest(opt.large_messages.unwrap_or(0))
         .set_filter_unit(&opt.unit)
+        .set_regex(
+            &opt.pattern
+                .map_or(None, |r| Some(Regex::new(&r).expect("invalid regex"))),
+        )
         .parse()
         .report();
 }
