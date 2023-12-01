@@ -1,0 +1,69 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: sudo apt install -y libsystemd-dev
+
+    - name: Build
+      run: cargo build --verbose --release --target x86_64-unknown-linux-gnu
+
+    - name: Upload built binary artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: journalstat
+        path: target/x86_64-unknown-linux-gnu/release/journalstat
+
+
+  release:
+
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+
+    needs: build
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Release version from the tag
+      shell: bash
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+    - name: Download binary artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: journalstat
+
+    - name: Create archive of binary
+      shell: bash
+      run: |
+        binary_name="journalstat"
+        target="x86_64-unknown-linux-gnu"
+        dirname="$binary_name-${{ env.VERSION }}-$target"
+        mkdir $dirname
+        mv "$binary_name" "$dirname"
+        tar -czf "$dirname.tar.gz" "$dirname"
+        echo "ASSET=$dirname.tar.gz" >> $GITHUB_ENV
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ${{ env.ASSET }}
